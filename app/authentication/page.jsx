@@ -3,19 +3,14 @@ import React, { Suspense } from 'react'
 import '../globals.css'
 import { usePathname, useSearchParams } from 'next/navigation'
 import SignupForm from '../components/SignupForm'
+import LoginForm from '../components/LoginForm'
 
 function AuthForm() {
   const p = useSearchParams()
   const isSignup = p.get('type') == 'signup' ? true : false
   console.log(p)
 
-  return isSignup ? (
-    <SignupForm />
-  ) : (
-    <div>
-      <h1>Login Page</h1>
-    </div>
-  )
+  return isSignup ? <SignupForm /> : <LoginForm />
 }
 
 function Loading() {
