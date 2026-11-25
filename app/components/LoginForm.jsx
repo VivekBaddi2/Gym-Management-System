@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { loginGymOwner } from '../actions/auth'
+import { loginUser } from '../actions/auth'
 
 function LoginForm() {
   const {
@@ -20,7 +20,7 @@ function LoginForm() {
     setError(null)
 
     try {
-      const res = await loginGymOwner(data)
+      const res = await loginUser(data)
 
       if (res.status === 200) {
         setMessage(res.message)
@@ -63,15 +63,15 @@ function LoginForm() {
         <form onSubmit={handleSubmit(submitForm)} className="space-y-5">
           {/* Email */}
           <div>
-            <label htmlFor="ownerEmail" className={labelClass}>
+            <label htmlFor="email" className={labelClass}>
               Email Address
             </label>
 
             <input
-              id="ownerEmail"
+              id="email"
               type="email"
               placeholder="john@example.com"
-              {...register('ownerEmail', {
+              {...register('email', {
                 required: 'Email is required',
                 pattern: {
                   value: /^\S+@\S+\.\S+$/,
@@ -81,23 +81,23 @@ function LoginForm() {
               className={inputClass}
             />
 
-            {errors.ownerEmail && (
-              <p className={errorClass}>{errors.ownerEmail.message}</p>
+            {errors.email && (
+              <p className={errorClass}>{errors.email.message}</p>
             )}
           </div>
 
           {/* Password */}
           <div>
-            <label htmlFor="ownerPass" className={labelClass}>
+            <label htmlFor="password" className={labelClass}>
               Password
             </label>
 
             <div className="relative">
               <input
-                id="ownerPass"
+                id="password"
                 type={showPassword ? 'text' : 'password'}
                 placeholder="Enter your password"
-                {...register('ownerPass', {
+                {...register('password', {
                   required: 'Password is required',
                 })}
                 className={`${inputClass} pr-16`}
@@ -112,8 +112,8 @@ function LoginForm() {
               </button>
             </div>
 
-            {errors.ownerPass && (
-              <p className={errorClass}>{errors.ownerPass.message}</p>
+            {errors.password && (
+              <p className={errorClass}>{errors.password.message}</p>
             )}
           </div>
 
@@ -142,7 +142,7 @@ function LoginForm() {
 
         {/* Footer */}
         <p className="mt-6 text-center text-xs text-gray-400">
-          Gym Management System · Owner Login
+          Gym Management System · Account Login
         </p>
       </div>
     </div>

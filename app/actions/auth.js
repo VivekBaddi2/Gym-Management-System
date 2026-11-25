@@ -5,52 +5,26 @@ import { pool } from '../lib/db'
 import bcrypt from 'bcrypt'
 
 export async function signupGymOwner(data) {
-  const ownerId = uuidv4()
-  const ownerName = data.ownerName
-  const ownerPhone = data.ownerPhone
-  const ownerEmail = data.ownerEmail
+  const userId = uuidv4()
+  const ownerName = data.ownerName?.trim()
+  const ownerPhone = data.ownerPhone?.trim()
+  const ownerEmail = data.ownerEmail?.trim()
   const ownerPass = data.ownerPass
 
-  // Hash the password using bcrypt
-  const hashedPass = await bcrypt.hash(ownerPass, 12)
-
-  // Check if an account already exists for the given phone number and email because phone number must be unique
-  try {
-    const res = await pool.query(
-      `SELECT * FROM gym_owner where gym_owner_phone=$1 or gym_owner_email=$2`,
-      [ownerPhone, ownerEmail],
-    )
-    for (const row of res?.rows) {
-      if (row.gym_owner_phone === ownerPhone) {
-        return {
-          status: 409,
-          success: false,
-          error:
-            'This phone number is already linked to a different account. Please use another number.',
-        }
-      }
-      if (row.gym_owner_email === ownerEmail) {
-        return {
-          status: 409,
-          success: false,
-          error:
-            'This email is already linked to a different account. Please use another email.',
-        }
-      }
-    }
-  } catch (error) {
-    console.error('Data validation failed', error)
+  if (!ownerName || !ownerPhone || !ownerEmail || !ownerPass) {
     return {
-      status: 500,
+      status: 400,
       success: false,
-      error: 'Data validation failed. Please try again.',
+      error: 'Name, phone, email, and password are required.',
     }
   }
 
   try {
-    const res = await pool.query(
-      `INSERT INTO gym_owner (gym_owner_id, gym_owner_name, gym_owner_phone, gym_owner_email, gym_owner_password) VALUES ($1, $2, $3, $4, $5)`,
-      [ownerId, ownerName, ownerPhone, ownerEmail, hashedPass],
+    const hashedPass = await bcrypt.hash(ownerPass, 12)
+    await pool.query(
+      `INSERT INTO users (user_id, user_name, user_phone, user_email, user_password, role)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [userId, ownerName, ownerPhone, ownerEmail, hashedPass, 'gym-owner'],
     )
     return {
       status: 201,
@@ -58,6 +32,13 @@ export async function signupGymOwner(data) {
       message: 'Account created successfully.',
     }
   } catch (error) {
+    if (error.code === '23505') {
+      return {
+        status: 409,
+        success: false,
+        error: 'This phone number or email is already linked to an account.',
+      }
+    }
     console.error('Signup failed: ', error)
     return {
       status: 500,
@@ -67,41 +48,53 @@ export async function signupGymOwner(data) {
   }
 }
 
-export async function loginGymOwner(data) {
-  const ownerEmail = data.ownerEmail
-  const ownerPass = data.ownerPass
-  let accountDetails
-  // First check if an account with the given email exists or not, if doesn't exist, then return.
+export async function loginUser(data) {
+  const email = data.email?.trim()
+  const password = data.password
+
+  if (!email || !password) {
+    return {
+      status: 400,
+      success: false,
+      error: 'Email and password are required.',
+    }
+  }
+
   try {
     const res = await pool.query(
-      `select gym_owner_email, gym_owner_password from gym_owner where gym_owner_email=$1`,
-      [ownerEmail],
+      `SELECT user_id, user_name, user_email, user_password, role
+       FROM users
+       WHERE user_email = $1`,
+      [email],
     )
-    // rowCount = 0 means, the sql query did not find any records for given mail, thus account doesn't exist
     if (res.rowCount === 0) {
       return {
         status: 400,
         success: false,
         error: 'There is no account associated with the given email',
       }
-    } else {
-      accountDetails = res.rows[0] // if accout exists, then store the data in accountDetails variable to avoid future db calls
     }
-  } catch (error) {
-    console.error('Unable to validate the given email', error)
-    return { status: 500, success: false, error: 'Server Error' }
-  }
 
-  // If account exists then the following code will be executed
-  try {
-    const dehash = await bcrypt.compare(
-      ownerPass,
-      accountDetails.gym_owner_password,
-    )
-    if (dehash === true) {
-      return { status: 200, success: true, message: 'Successfully Logged In!' }
-    } else {
-      return { status: 400, success: false, error: 'Incorrect Password' }
+    const user = res.rows[0]
+    const passwordMatches = await bcrypt.compare(password, user.user_password)
+    if (!passwordMatches) {
+      return {
+        status: 400,
+        success: false,
+        error: 'Invalid email or password.',
+      }
+    }
+
+    return {
+      status: 200,
+      success: true,
+      message: 'Successfully logged in.',
+      user: {
+        userId: user.user_id,
+        userName: user.user_name,
+        userEmail: user.user_email,
+        role: user.role,
+      },
     }
   } catch (error) {
     console.error('Login Failed, Please try again.', error)
